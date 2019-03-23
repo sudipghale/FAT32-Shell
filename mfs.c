@@ -39,6 +39,10 @@
 #define MAX_COMMAND_SIZE 255    // The maximum command-line size
 
 #define MAX_NUM_ARGUMENTS 5     // Mav shell only supports five arguments
+
+#define TRUE 1
+#define FALSE 0
+
 /*
   read in the image file, use fseek then fread 5 time and print the values in decimal and hexadecimal (%5x).
   get info working then ls working.
@@ -72,15 +76,29 @@ int main(int argc, char *argv[])
   char BS_OEMName[8];
   int16_t BPB_BytsPerSec;
   int8_t BPB_SecPerClus;
-  int16_t BPB_RsvdSecCnt;
+  int16_t BPB_RsvdSecCnt; // FAT #1 starts at address BPB_RsvdSecCnt * BPB_BytsPerSec
   int8_t BPB_NumFATs;
   int16_t BPB_RootEntCnt;
   char  BS_VolLab[11];
-  int32_t BPB_FATSz32;
+  int32_t BPB_FATSz32; // Total FAT size is BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec
+
+/*
+Clusters start at address (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) + (BPB_RsvdSecCnt * BPB_BytsPerSec)
+Clusters are each (BPB_SecPerClus * BPB_BytsPerSec) in bytes
+
+Root Directory is at the first cluster.
+
+Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_BytsPerSec)
+
+
+*/
+
 
   int32_t RootDirSectors =0;
   int32_t FirstDataSector = 0;
   int32_t FirstSectorofClustor =0;
+
+  int flag_open;
 
 
   while( 1 )
@@ -126,6 +144,13 @@ int main(int argc, char *argv[])
     // Now print the tokenized input as a debug check
     // \TODO Remove this code and replace with your shell functionality
 
+    //catches empty buffer prevents from seg fault
+    if (token[0] == NULL)
+    {
+      continue;
+    }
+
+
     if(strcmp(token[0],"open")==0)
     {
        file_ptr= fopen(token[1],"r");
@@ -134,7 +159,14 @@ int main(int argc, char *argv[])
         printf("Error: File system image not found.\n" );
         return 1;
       }
+      if (flag_open == TRUE)
+      {
+        printf("Error: File system image already open.\n");
+        continue;
+      }
+
       printf(" file open success\n" );
+      flag_open = TRUE;
       // add fun if the file is already opened before.
 
 
@@ -142,10 +174,17 @@ int main(int argc, char *argv[])
     }
     if(strcmp(token[0],"close")==0)
     {
+      if (flag_open == FALSE)
+      {
+        printf("Error: File system image must be opened first.\n");
+        continue;
+      }
+
       if(file_ptr !=NULL) //if the file was oppened
       {
         fclose(file_ptr);
         printf("file close success\n" );
+        flag_open = FALSE;
       }
       if(file_ptr==NULL) //if file is not oppened then print error
       {
