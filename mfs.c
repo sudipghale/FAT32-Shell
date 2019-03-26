@@ -1,4 +1,4 @@
-// The MIT License (MIT)
+/*// The MIT License (MIT)
 //
 // Copyright (c) 2016, 2017 Trevor Bakker
 //
@@ -19,7 +19,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-
+*/
 #define _GNU_SOURCE
 
 #include <stdio.h>
@@ -44,25 +44,21 @@
 #define FALSE 0
 
 /*
-  read in the image file, use fseek then fread 5 time and print the values in decimal and hexadecimal (%5x).
+
   get info working then ls working.
-
   memcpy
-
   foo .....txt 8000017K:  017 is cluster num, k is size
     stat should print.
 */
- /*struct _attribute_((_packed_)) DirectoryEntry
+ /*struct __attribute__((__packed__)) DirectoryEntry
 {
-  char DIR_Name[11];
-  uint8_t DIR_Attr;
-  unit8_t Unused1[8];
+  char DIR_Name[11];// stat
+  uint8_t DIR_Attr; //stat
+  unit8_t Unused1[8]; ???
   unit16_t DIR_FirstClusterHigh;
-  unit8_t Unused2[4];
-  unit16_t DIR_FirstClusterLow;
-  unit32_t DIR_FileSize;
-
-
+  unit8_t Unused2[4];???
+  unit16_t DIR_FirstClusterLow;//stat
+  unit32_t DIR_FileSize;//stat
 } ;
 */
 int main(int argc, char *argv[])
@@ -85,12 +81,8 @@ int main(int argc, char *argv[])
 /*
 Clusters start at address (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) + (BPB_RsvdSecCnt * BPB_BytsPerSec)
 Clusters are each (BPB_SecPerClus * BPB_BytsPerSec) in bytes
-
 Root Directory is at the first cluster.
-
 Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_BytsPerSec)
-
-
 */
 
 
@@ -151,75 +143,144 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
     }
 
 
-    if(strcmp(token[0],"open")==0)
+    else if(strcmp(token[0],"open")==0)
     {
-       file_ptr= fopen(token[1],"r");
-      if(file_ptr == NULL)
+      if(token[1]==NULL)
       {
-        printf("Error: File system image not found.\n" );
-        return 1;
-      }
-      if (flag_open == TRUE)
-      {
-        printf("Error: File system image already open.\n");
+        printf("Error: Please enter the file name to open\n" );
         continue;
       }
+      else
+      {
+        file_ptr= fopen(token[1],"r");
+        if(file_ptr == NULL)
+          {
+             printf("Error: File system image not found.\n" );
+             continue;
+          }
+        if (flag_open == TRUE)
+          {
+             printf("Error: File system image already open.\n");
+             continue;
+          }
 
-      printf(" file open success\n" );
-      flag_open = TRUE;
-      // add fun if the file is already opened before.
+           printf(" file open success\n" );
+           flag_open = TRUE;
 
-
+      }
 
     }
-    if(strcmp(token[0],"close")==0)
+    else if(strcmp(token[0],"close")==0) // we are having seg fault if we close without opning the file
     {
-      if (flag_open == FALSE)
-      {
-        printf("Error: File system image must be opened first.\n");
-        continue;
-      }
-
       if(file_ptr !=NULL) //if the file was oppened
       {
         fclose(file_ptr);
         printf("file close success\n" );
         flag_open = FALSE;
       }
-      if(file_ptr==NULL) //if file is not oppened then print error
+      else //(file_ptr==NULL ||flag_open == FALSE) //if file is not oppened then print error
       {
-        printf("Error: File system not open\n" );
+        printf("Error: File system image must be opened first.\n");
+        continue;
+      }
+
+    }
+  /*  read in the image file, use fseek then fread 5 time and
+   print the values in decimal and hexadecimal (%5x).
+   Q> DO WE NEED TO OPEN IMG FILE BEFORE EXECUTIN INFO?? OR INSIDE INFO()
+*/
+  else  if(strcmp(token[0],"info")==0) // ASSUMMING IMG FILE IS ALREADY OPEN
+    {
+      // TO DO: if not open print Error
+      fseek(file_ptr, 11,SEEK_SET);
+      fread(&BPB_BytsPerSec,2,1,file_ptr);
+
+      fseek(file_ptr, 13,SEEK_SET);
+      fread(&BPB_SecPerClus,1,1,file_ptr);
+
+      fseek(file_ptr, 14,SEEK_SET);
+      fread(&BPB_RsvdSecCnt,2,1,file_ptr);
+
+      fseek(file_ptr, 16,SEEK_SET);
+      fread(&BPB_NumFATs,1,1,file_ptr);
+
+      fseek(file_ptr, 36,SEEK_SET); //make sure of the This
+      fread(&BPB_FATSz32,4,1,file_ptr);
+      //%x for hexadecimal
+      printf(" BPB_BytsPerSec in hexadecimal is 0x%5x and in decimal %d\n", BPB_BytsPerSec, BPB_BytsPerSec );
+      printf(" BPB_SecPerClus in hexadecimal is 0x%5x and in decimal %d\n", BPB_SecPerClus, BPB_SecPerClus );
+      printf(" BPB_RsvdSecCnt in hexadecimal is 0x%5x and in decimal %d\n", BPB_RootEntCnt, BPB_RootEntCnt );
+      printf(" BPB_NumFATs in hexadecimal is 0x %5x and in decimal %d\n", BPB_NumFATs, BPB_NumFATs );
+      printf(" BPB_FATSz32 in hexadecimal is 0x%5x and in decimal %d\n", BPB_FATSz32, BPB_FATSz32 );
+
+
+    }
+    /*
+    req: print attributes and the starting cluster  num of the file or dir.
+      print: name , attrbute, cluster low, size,
+      attribute will tell file ( 10 dir )
+
+
+    */
+  else  if(strcmp(token[0],"stat")==0)
+    {
+      if(token[1]==NULL)
+      {
+        printf("Error: need file name or dir name\n" );
+        continue;
+      }
+      else // how to file or dir???
+      {
+
       }
 
 
     }
-    if(strcmp(token[0],"info")==0)
+    //
+  else  if(strcmp(token[0],"get")==0)
     {
 
     }
-    if(strcmp(token[0],"stat")==0)
+    else if(strcmp(token[0],"put")==0)
     {
 
     }
-    if(strcmp(token[0],"get")==0)
+    /*
+    for relative
+    for absolute path: need to tokenize with "/", then go to each dir if exitst go
+    to next ....
+        it is while loop();
+    */
+  else  if(strcmp(token[0],"cd")==0)
     {
 
     }
-    if(strcmp(token[0],"put")==0)
+    /*
+    get the add of the rootDir,
+     Locate the Root Directory, get the list of fileand folders
+     find low cluser num, and replace the offset with the low thing
+    */
+    /*
+
+    */
+  else  if(strcmp(token[0],"ls")==0)
     {
 
     }
-    if(strcmp(token[0],"cd")==0)
+  else  if(strcmp(token[0],"read")==0)
     {
 
     }
-    if(strcmp(token[0],"ls")==0)
+  else  if(strcmp(token[0],"exit")==0)
     {
+      printf("EXITING\n");
+      exit(0);
 
     }
-    if(strcmp(token[0],"read")==0)
+  else
     {
-
+      printf("Command not recognized, please enter valid command to execute\n" );
+      continue;
     }
 
 
