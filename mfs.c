@@ -145,8 +145,6 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
     {
       continue;
     }
-
-
     else if(strcmp(token[0],"open")==0)
     {
       if(token[1]==NULL)
@@ -170,22 +168,21 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
 
            printf(" file open success\n" );
            flag_open = TRUE;
-
       }
-
     }
     else if(strcmp(token[0],"close")==0) // we are having seg fault if we close without opning the file
     {
+
+      if ( (flag_open == FALSE) || (token_count == 2) ) //if file is not oppened then print error
+      {
+        printf("Error: File system image must be opened first.\n");
+        continue;
+      }
       if(file_ptr !=NULL) //if the file was oppened
       {
         fclose(file_ptr);
         printf("file close success\n" );
         flag_open = FALSE;
-      }
-      else //(file_ptr==NULL ||flag_open == FALSE) //if file is not oppened then print error
-      {
-        printf("Error: File system image must be opened first.\n");
-        continue;
       }
 
     }
@@ -235,6 +232,29 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
       }
       else // how to file or dir???
       {
+            //go to root directory
+            fseek(file_ptr, 0x100400, SEEK_SET);
+
+            //read the root directory
+            fread(&dir[0], sizeof(struct DirectoryEntry), 16, file_ptr);
+
+            int i;
+
+            printf("token 2:%s \n", token[1]);
+
+
+            for (i = 0; i < 16; i++)
+            {
+
+            if ( strcmp( token[1], dir[i].DIR_Name) == 0 )
+              {
+                char name[12];
+
+                memset(&name, 0 , 12);
+                strncpy(&name, dir[i].DIR_Name, 11);
+                printf("%s  attribute: 0x %x file size: %d low: %d\n", name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
+              }
+            }
 
       }
 
