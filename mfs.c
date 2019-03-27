@@ -29,7 +29,8 @@
 #include <errno.h>
 #include <string.h>
 #include <signal.h>
-#include <stdint.h>
+#include<stdint.h>
+#include <inttypes.h>
 
 #define WHITESPACE " \t\n"      // We want to split our command line up into tokens
                                 // so we need to define what delimits our tokens.
@@ -49,18 +50,20 @@
   memcpy
   foo .....txt 8000017K:  017 is cluster num, k is size
     stat should print.
+
 */
- /*struct __attribute__((__packed__)) DirectoryEntry
+struct __attribute__((__packed__)) DirectoryEntry
 {
   char DIR_Name[11];// stat
   uint8_t DIR_Attr; //stat
-  unit8_t Unused1[8]; ???
-  unit16_t DIR_FirstClusterHigh;
-  unit8_t Unused2[4];???
-  unit16_t DIR_FirstClusterLow;//stat
-  unit32_t DIR_FileSize;//stat
+  uint8_t Unused1[8]; //???
+  uint16_t DIR_FirstClusterHigh;
+  uint8_t Unused2[4]; //???
+  uint16_t DIR_FirstClusterLow;//stat
+  uint32_t DIR_FileSize;//stat
 } ;
-*/
+
+
 int main(int argc, char *argv[])
 {
 
@@ -68,15 +71,16 @@ int main(int argc, char *argv[])
 
   //added
   FILE *file_ptr;
-  //struct DirectoryEntry dir[16];
-  char BS_OEMName[8];
-  int16_t BPB_BytsPerSec;
-  int8_t BPB_SecPerClus;
-  int16_t BPB_RsvdSecCnt; // FAT #1 starts at address BPB_RsvdSecCnt * BPB_BytsPerSec
-  int8_t BPB_NumFATs;
-  int16_t BPB_RootEntCnt;
-  char  BS_VolLab[11];
-  int32_t BPB_FATSz32; // Total FAT size is BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec
+  struct DirectoryEntry dir[16];
+  char BS_OEMName[8]; //
+  int16_t BPB_BytsPerSec; // Count of bytes per sector
+  int8_t BPB_SecPerClus; // Number of sectors per allocation unit.
+  int16_t BPB_RsvdSecCnt; // Number of reserved sectors in the Reserved region of the volume starting at the first sector of the volume.  FAT #1 starts at address BPB_RsvdSecCnt * BPB_BytsPerSec
+  int8_t BPB_NumFATs; //The count of FAT data structures on the volume. This field should always contain the value 2 for any FAT volume of any type.
+  int16_t BPB_RootEntCnt; // For FAT12 and FAT16 volumes, this field contains the count of 32-byte directory entries in the root directory. For FAT32 volumes,this field must be set to 0.
+  char  BS_VolLab[11]; // Volume label. This field matches the 11-byte volume label recorded in the root directory.
+  int32_t BPB_FATSz32; // This field is only defined for FAT32 media and does not exist on FAT12 and FAT16 media. This field is the FAT32 32-bit count ofsectors occupied by ONE FAT. BPB_FATSz16 must be 0. Total FAT size is BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec
+
 
 /*
 Clusters start at address (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) + (BPB_RsvdSecCnt * BPB_BytsPerSec)
@@ -86,9 +90,9 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
 */
 
 
-  int32_t RootDirSectors =0;
+  int32_t RootDirSectors = 0;
   int32_t FirstDataSector = 0;
-  int32_t FirstSectorofClustor =0;
+  int32_t FirstSectorofClustor = 0;
 
   int flag_open;
 
@@ -265,6 +269,31 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
     */
   else  if(strcmp(token[0],"ls")==0)
     {
+
+      fseek(file_ptr, 11, SEEK_SET);
+      fread(&BPB_BytsPerSec, 2, 1, file_ptr);
+
+      printf("\nbytes per sector %d\n\n", BPB_BytsPerSec);
+
+      //go to root directory
+      fseek(file_ptr, 0x100400, SEEK_SET);
+
+      //read the root directory
+      fread(&dir[0], sizeof(struct DirectoryEntry), 16, file_ptr);
+
+      int i;
+
+
+      //while loop (!= EOC) {}
+      for (i = 0; i < 16; i++)
+      {
+        char name[12];
+        memset(&name, 0 , 12);
+
+        strncpy(&name, dir[i].DIR_Name, 11);
+        printf("%s %d\n", name, dir[i].DIR_FirstClusterLow);
+      }
+
 
     }
   else  if(strcmp(token[0],"read")==0)
