@@ -94,7 +94,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
   int32_t FirstDataSector = 0;
   int32_t FirstSectorofClustor = 0;
 
-  int flag_open;
+  int flag_open = FALSE;
 
 
   while( 1 )
