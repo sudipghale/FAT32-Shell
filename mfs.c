@@ -89,12 +89,11 @@ Root Directory is at the first cluster.
 Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_BytsPerSec)
 */
 
-
   int32_t RootDirSectors = 0;
   int32_t FirstDataSector = 0;
   int32_t FirstSectorofClustor = 0;
 
-  int flag_open;
+  int flag_open = FALSE;
 
 
   while( 1 )
@@ -173,7 +172,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
     else if(strcmp(token[0],"close")==0) // we are having seg fault if we close without opning the file
     {
 
-      if ( (flag_open == FALSE) || (token_count == 2) ) //if file is not oppened then print error
+      if ( (flag_open == FALSE)  ) //if file is not oppened then print error
       {
         printf("Error: File system image must be opened first.\n");
         continue;
