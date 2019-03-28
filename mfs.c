@@ -88,9 +88,11 @@ Clusters are each (BPB_SecPerClus * BPB_BytsPerSec) in bytes
 Root Directory is at the first cluster.
 Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_BytsPerSec)
 */
-
+//RootDirSectors = ((BPB_RootEntCnt * 32) + (BPB_BytsPerSec – 1)) / BPB_BytsPerSec;
   int32_t RootDirSectors = 0;
+  //FirstDataSector = BPB_ResvdSecCnt + (BPB_NumFATs * FATSz) + RootDirSectors;
   int32_t FirstDataSector = 0;
+  //FirstSectorofCluster = ((N – 2) * BPB_SecPerClus) + FirstDataSector;
   int32_t FirstSectorofClustor = 0;
 
   int flag_open = FALSE;
