@@ -45,12 +45,10 @@
 #define FALSE 0
 
 /*
-
   get info working then ls working.
   memcpy
   foo .....txt 8000017K:  017 is cluster num, k is size
     stat should print.
-
 */
 struct __attribute__((__packed__)) DirectoryEntry
 {
@@ -62,7 +60,9 @@ struct __attribute__((__packed__)) DirectoryEntry
   uint16_t DIR_FirstClusterLow;//stat
   uint32_t DIR_FileSize;//stat
 } ;
+int LBAToOffset(int32_t sector,int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt,int8_t BPB_NumFATs, int32_t BPB_FATSz32);
 
+int compare(char file_name[50], char img_name[50]);
 
 int main(int argc, char *argv[])
 {
@@ -220,18 +220,17 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
     req: print attributes and the starting cluster  num of the file or dir.
       print: name , attrbute, cluster low, size,
       attribute will tell file ( 10 dir )
-
-
     */
   else  if(strcmp(token[0],"stat")==0)
     {
       if(token[1]==NULL)
       {
-        printf("Error: need file name or dir name\n" );
+        printf("EEEESError: need file name or dir name\n" );
         continue;
       }
       else // how to file or dir???
       {
+            int match =0;
             //go to root directory
             fseek(file_ptr, 0x100400, SEEK_SET);
 
@@ -240,21 +239,21 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
 
             int i;
 
-            printf("token 2:%s \n", token[1]);
-
-
             for (i = 0; i < 16; i++)
             {
+              char name[12];
+              memset(&name, 0 , 12);
+              match =0;
+              match = compare(token[1], dir[i].DIR_Name);
 
-            if ( strcmp( token[1], dir[i].DIR_Name) == 0 )
-              {
-                char name[12];
-
-                memset(&name, 0 , 12);
-                strncpy(&name, dir[i].DIR_Name, 11);
-                printf("%s  attribute: 0x %x file size: %d low: %d\n", name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
-              }
+              strncpy(&name, dir[i].DIR_Name, 12); // NOTE: is not matching num.txt???
+              if (match)
+                {
+                  printf("%s attribute: 0x %x file size: %d low: %d\n", name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
+                  break;
+                }
             }
+            if(!match) printf("%s file didn't find\n",token[1] );
 
       }
 
@@ -274,9 +273,48 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
     for absolute path: need to tokenize with "/", then go to each dir if exitst go
     to next ....
         it is while loop();
+    use int LBAToOffset(int32_t sector)  // sector= DIR_FirstClusterLow
+    { return ((sector -2) * BPB_BytsPerSec)+(BPB_BytsPerSec* BPB_RsvdSecCnt)+(BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec);
+    }
+    then read in the values like we did for the root dir fseek and fread
     */
   else  if(strcmp(token[0],"cd")==0)
     {
+      if(token[1]==NULL)
+      {
+        printf("Error: need dir name\n" );
+        continue;
+      }
+      else // how to file or dir???
+      {
+            int match =0;
+            //go to root directory
+            fseek(file_ptr, 0x100400, SEEK_SET);
+
+            //read the root directory
+            fread(&dir[0], sizeof(struct DirectoryEntry), 16, file_ptr);
+
+            int i;
+
+            for (i = 0; i < 16; i++)
+            {
+              char name[12];
+              memset(&name, 0 , 12);
+              match =0;
+              match = compare(token[1], dir[i].DIR_Name);
+
+              strncpy(&name, dir[i].DIR_Name, 11);
+              if (match)
+                {
+                  printf("FOUND THE DIR\n");
+
+                //  printf("%s attribute: 0x %x file size: %d low: %d\n", name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
+                  break;
+                }
+            }
+            if(!match) printf("%s DIR didn't find\n",token[1] );
+
+      }
 
     }
     /*
@@ -285,9 +323,8 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
      find low cluser num, and replace the offset with the low thing
     */
     /*
-
     */
-  else  if(strcmp(token[0],"ls")==0)
+  else  if(strcmp(token[0],"ls")==0) // DO: IMPLEMENT . AND ..
     {
 
       fseek(file_ptr, 11, SEEK_SET);
@@ -310,8 +347,16 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
         char name[12];
         memset(&name, 0 , 12);
 
-        strncpy(&name, dir[i].DIR_Name, 11);
-        printf("%s %d\n", name, dir[i].DIR_FirstClusterLow);
+      if(dir[i].DIR_Name[0] != (char)5 || dir[i].DIR_Name != (char)226)
+      {
+        if(dir[i].DIR_Attr == (int8_t) 0x1|| dir[i].DIR_Attr ==(int8_t)0x10||dir[i].DIR_Attr == (int8_t) 0x20)
+        {
+          strncpy(&name, dir[i].DIR_Name, 11);
+          printf("%s %d\n", name, dir[i].DIR_FirstClusterLow);
+        }
+
+      }
+
       }
 
 
@@ -336,12 +381,44 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
 
 
 
-
-
-
-
     free( working_root );
 
   }
   return 0;
+}
+
+int LBAToOffset(int32_t sector,int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt,int8_t BPB_NumFATs, int32_t BPB_FATSz32)
+{
+  return ((sector -2) * BPB_BytsPerSec)+(BPB_BytsPerSec* BPB_RsvdSecCnt)+(BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec);
+}
+
+
+int compare(char file_name[50], char img_name[50])
+{
+
+  char expanded_name[12];
+  memset( expanded_name, ' ', 12 );
+  char *token = strtok( file_name, "." );
+  strncpy( expanded_name, token, strlen( token ) );
+
+  token = strtok( NULL, "." );
+
+  if( token )
+  {
+    strncpy( (char*)(expanded_name+8), token, strlen(token ) );
+  }
+
+  expanded_name[11] = '\0';
+  int i;
+  for( i = 0; i < 11; i++ )
+  {
+    expanded_name[i] = toupper( expanded_name[i] );
+  }
+
+  if( strncmp( expanded_name, img_name, 11 ) == 0 )
+  {
+    printf("They matched\n");
+    return 1;
+  }
+  else return 0;
 }
