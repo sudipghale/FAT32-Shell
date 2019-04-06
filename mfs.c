@@ -46,7 +46,7 @@
 
 #define EOC 0x0FFFFFF8
 
-char first_init = 'm';
+int address = 0x100400;
 
 /*
   get info working then ls working.
@@ -247,7 +247,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
 
 
             //go to root directory
-            fseek(file_ptr, 0x100400, SEEK_SET);
+            fseek(file_ptr, address, SEEK_SET);
 
             //read the root directory
             fread(&dir[0], sizeof(struct DirectoryEntry), 16, file_ptr);
@@ -385,32 +385,18 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
 
                   int cluster = dir[i].DIR_FirstClusterLow;
 
-                  int address = LBAToOffset(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, BPB_NumFATs,  BPB_FATSz32);
+                  address = LBAToOffset(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, BPB_NumFATs,  BPB_FATSz32);
 
-                  printf("Offset in hex: 0x%x and decimal: %d\n", offset,offset);
+                  printf("Address: 0x%x\n", address);
+
+                  //printf("address : 0x%x and decimal: %d\n", offset ,offset);
 
                   //move the file pointer to the directory location
                   fseek(file_ptr, address, SEEK_SET);
 
                   //read the directory
-                  //fread(&dir[0], sizeof(struct DirectoryEntry), offset, file_ptr);
+                  fread(&dir[0], sizeof(struct DirectoryEntry), address, file_ptr);
 
-                  for (i = 0; i < 16; i++)
-                  {
-                    char name[12];
-                    memset(&name, 0 , 12);
-
-                  if(dir[i].DIR_Name[0] != (char)5 || dir[i].DIR_Name != (char)226)
-                  {
-                    if(dir[i].DIR_Attr == (int8_t) 0x1|| dir[i].DIR_Attr ==(int8_t)0x10||dir[i].DIR_Attr == (int8_t) 0x20)
-                    {
-                      strncpy(&name, dir[i].DIR_Name, 11);
-                      printf("%s %d\n", name, dir[i].DIR_FirstClusterLow);
-                    }
-
-                  }
-
-                  }
 
 
                   break;
@@ -434,14 +420,8 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
   else  if(strcmp(token[0],"ls")==0) // DO: IMPLEMENT . AND ..
     {
 
-      fseek(file_ptr, 11, SEEK_SET);
-      fread(&BPB_BytsPerSec, 2, 1, file_ptr);
-
-      printf("\nbytes per sector %d\n\n", BPB_BytsPerSec);
-
-
       //go to root directory
-      fseek(file_ptr, 0x100400, SEEK_SET);
+      fseek(file_ptr, address, SEEK_SET);
 
       //read the root directory
       fread(&dir[0], sizeof(struct DirectoryEntry), 16, file_ptr);
@@ -460,9 +440,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
           strncpy(&name, dir[i].DIR_Name, 11);
           printf("%s %d\n", name, dir[i].DIR_FirstClusterLow);
         }
-
       }
-
       }
 
 
