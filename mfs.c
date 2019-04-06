@@ -436,7 +436,6 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
 
       fseek(file_ptr, 11, SEEK_SET);
       fread(&BPB_BytsPerSec, 2, 1, file_ptr);
-
       printf("\nbytes per sector %d\n\n", BPB_BytsPerSec);
 
 
