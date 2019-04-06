@@ -153,7 +153,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
     {
       continue;
     }
-    else if(strcmp(token[0],"open")==0)
+    else if(strcmp(token[0],"open")==0) // DONE
     {
       if(token[1]==NULL)
       {
@@ -194,7 +194,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
            flag_open = TRUE;
       }
     }
-    else if(strcmp(token[0],"close")==0) // we are having seg fault if we close without opning the file
+    else if(strcmp(token[0],"close")==0) // DONE
     {
 
       if ( (flag_open == FALSE)  ) //if file is not oppened then print error
@@ -214,7 +214,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
    print the values in decimal and hexadecimal (%5x).
    Q> DO WE NEED TO OPEN IMG FILE BEFORE EXECUTIN INFO?? OR INSIDE INFO()
 */
-  else  if(strcmp(token[0],"info")==0) // ASSUMMING IMG FILE IS ALREADY OPEN
+  else  if(strcmp(token[0],"info")==0) //DONE // ASSUMMING IMG FILE IS ALREADY OPEN
     {
 
 
@@ -236,46 +236,47 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
       print: name , attrbute, cluster low, size,
       attribute will tell file ( 10 dir )
     */
-  else if(strcmp(token[0],"stat")==0)
-    {
-      if(token[1]==NULL)
-      {
-        printf("Error: need file name or dir name\n" );
-        continue;
-      }
-      else // how to file or dir???
-      {
-            int match =0;
+    else if(strcmp(token[0],"stat")==0) // DONE only need strlen(dir name)
+        {
+          if(token[1]==NULL)
+          {
+            printf("Error: need file name or dir name\n" );
+            continue;
+          }
+          else // how to file or dir???
+          {
+                int match =0;
+                char copyToken[12];
+                strncpy( copyToken, token[1], strlen( token[1] ) );
 
 
-            //go to root directory
-            fseek(file_ptr, address, SEEK_SET);
+                //go to root directory
+                fseek(file_ptr, address, SEEK_SET);
 
-            //read the root directory
-            fread(&dir[0], sizeof(struct DirectoryEntry), 16, file_ptr);
+                //read the root directory
+                fread(&dir[0], sizeof(struct DirectoryEntry), 16, file_ptr);
 
-            int i;
-
-            for (i = 0; i < 16; i++)
-            {
-              char name[12];
-              memset(&name, 0 , 12);
-              match = 0;
-              match = compare(token[1], dir[i].DIR_Name);
-
-              strncpy(&name, dir[i].DIR_Name, 12); // NOTE: is not matching num.txt???
-              if (match)
+                int i;
+                for (i = 0; i < 16; i++)
                 {
-                  printf("attribute: 0x%x file size: %d low: %d\n", dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
-                  break;
+                  char name[12];
+                  memset(&name, 0 , 12);
+                  match =0;
+                  strncpy( token[1],copyToken, strlen( copyToken ) );
+                  match = compare(token[1], dir[i].DIR_Name);
+                  strncpy(&name, dir[i].DIR_Name, 11);
+                  if (match)
+                    {
+                      printf("Name X%sX, DIR_Attr: 0x%x ,DIR_FileSize: %d and DIR_FirstClusterLow: %d\n",name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
+                      break;
+                    }
                 }
-            }
-            if(!match) printf("%s file didn't find\n",token[1] );
+                if(!match) printf("%s file didn't find\n",token[1] );
 
-      }
+          }
 
 
-    }
+        }
     //
   else  if(strcmp(token[0],"get")==0)
     {
@@ -414,12 +415,21 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
     get the add of the rootDir,
      Locate the Root Directory, get the list of fileand folders
      find low cluser num, and replace the offset with the low thing
+
     */
-    /*
-    */
-  else  if(strcmp(token[0],"ls")==0) // DO: IMPLEMENT . AND ..
+  else  if(strcmp(token[0],"ls")==0) // DO: IMPLEMENT . AND .. //assumed file oppened
     {
 
+<<<<<<< HEAD
+=======
+      fseek(file_ptr, 11, SEEK_SET);
+      fread(&BPB_BytsPerSec, 2, 1, file_ptr);
+      printf("\nbytes per sector %d\n\n", BPB_BytsPerSec);
+
+
+      //go to root directory
+      fseek(file_ptr, address, SEEK_SET);
+>>>>>>> 4f56ef8047deecedf7c4e2f4ccf43bfea630ec06
 
         fseek(file_ptr, address, SEEK_SET);
 
@@ -494,7 +504,7 @@ int compare(char file_name[50], char img_name[50])
   char *token = strtok( file_name, "." );
   strncpy( expanded_name, token, strlen( token ) );
 
-  token = strtok( NULL, "." );
+  token = strtok( NULL, "/n" );
 
   if( token )
   {
