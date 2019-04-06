@@ -44,6 +44,10 @@
 #define TRUE 1
 #define FALSE 0
 
+#define EOC 0x0FFFFFF8
+
+char first_init = 'm';
+
 /*
   get info working then ls working.
   memcpy
@@ -60,6 +64,9 @@ struct __attribute__((__packed__)) DirectoryEntry
   uint16_t DIR_FirstClusterLow;//stat
   uint32_t DIR_FileSize;//stat
 } ;
+
+int16_t NextLB(uint32_t sector, int16_t BPB_BytsPerSec, int16_t BPB_ResvdSecCnt, FILE** file_ptr);
+
 int LBAToOffset(int32_t sector,int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt,int8_t BPB_NumFATs, int32_t BPB_FATSz32);
 
 int compare(char file_name[50], char img_name[50]);
@@ -208,12 +215,17 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
 
       fseek(file_ptr, 36,SEEK_SET); //make sure of the This
       fread(&BPB_FATSz32,4,1,file_ptr);
+
       //%x for hexadecimal
       printf(" BPB_BytsPerSec in hexadecimal is 0x%5x and in decimal %d\n", BPB_BytsPerSec, BPB_BytsPerSec );
       printf(" BPB_SecPerClus in hexadecimal is 0x%5x and in decimal %d\n", BPB_SecPerClus, BPB_SecPerClus );
       printf(" BPB_RsvdSecCnt in hexadecimal is 0x%5x and in decimal %d\n", BPB_RootEntCnt, BPB_RootEntCnt );
       printf(" BPB_NumFATs in hexadecimal is 0x%5x and in decimal %d\n", BPB_NumFATs, BPB_NumFATs );
       printf(" BPB_FATSz32 in hexadecimal is 0x%5x and in decimal %d\n", BPB_FATSz32, BPB_FATSz32 );
+
+      int16_t rootHex =  (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) + (BPB_RsvdSecCnt *BPB_BytsPerSec);
+
+      printf("Root directory is: 0x%x \n", rootHex); // 0x 400
 
 
     }
@@ -222,16 +234,18 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
       print: name , attrbute, cluster low, size,
       attribute will tell file ( 10 dir )
     */
-  else  if(strcmp(token[0],"stat")==0)
+  else if(strcmp(token[0],"stat")==0)
     {
       if(token[1]==NULL)
       {
-        printf("EEEESError: need file name or dir name\n" );
+        printf("Error: need file name or dir name\n" );
         continue;
       }
       else // how to file or dir???
       {
             int match =0;
+
+
             //go to root directory
             fseek(file_ptr, 0x100400, SEEK_SET);
 
@@ -250,7 +264,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
               strncpy(&name, dir[i].DIR_Name, 12); // NOTE: is not matching num.txt???
               if (match)
                 {
-                  printf("%s attribute: 0x %x file size: %d low: %d\n", name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
+                  printf("attribute: 0x%x file size: %d low: %d\n", dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
                   break;
                 }
             }
@@ -267,19 +281,73 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
     }
     else if(strcmp(token[0],"put")==0)
     {
+      /*
+        FILE *ofp, *copytoFAT32;
+        int cluster;
 
-    }
+        copytoFAT32 = fopen(token[1], "r");
+
+        //error checks to see if file is in the directory
+        if (copytoFAT32 == NULL)
+        {
+          printf("Error: File not found\n", );
+          break;
+        }
+
+
+        for (i = 0; i < 16; i++);
+        {
+          //find file
+          cluster = dir[i].DIR_FirstClusterLow;
+          size = dir[i].DIR_FileSize
+        }
+
+        int address = LBAToOffset(cluster);
+
+        fseek(file_ptr, address, SEEK_SET);
+
+        ofp = fopen(token[1], "w");
+
+        unsigned char buff[512];
+
+        fread(&buff[0], 512, 1, file_ptr);
+
+        fwrite(&buff[0], 512, 1, ofp);
+
+        size -= 512;
+
+        while(size > 0)
+        {
+          cluster = NextLB(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, file_ptr);
+          address = LBAToOffset(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32);
+          //fseek(file_ptr)
+          //fread
+          //fwrite
+          size -= 512;
+        }
+        */
+  }
     /*
     for relative
     for absolute path: need to tokenize with "/", then go to each dir if exitst go
     to next ....
         it is while loop();
-    use int LBAToOffset(int32_t sector)  // sector= DIR_FirstClusterLow
+    use int LBAToOffset(int32_t sector)  // sector = DIR_FirstClusterLow
     { return ((sector -2) * BPB_BytsPerSec)+(BPB_BytsPerSec* BPB_RsvdSecCnt)+(BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec);
     }
     then read in the values like we did for the root dir fseek and fread
+
+
+    Files and sub-directory entries can be found by going to their first cluster number
+
+    Find first cluster numberin directory entry of the file or directory at hand
+
+    Figure out the sector to read using cluster number and FirstSectorofCluster equation
+
+    Read that cluster
     */
-  else  if(strcmp(token[0],"cd")==0)
+
+  else if(strcmp(token[0],"cd")==0)
     {
       if(token[1]==NULL)
       {
@@ -288,31 +356,69 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
       }
       else // how to file or dir???
       {
-            int match =0;
+            int match = 0;
+
+            /*
             //go to root directory
             fseek(file_ptr, 0x100400, SEEK_SET);
 
             //read the root directory
             fread(&dir[0], sizeof(struct DirectoryEntry), 16, file_ptr);
+            */
 
+            //Look for 0x10 attribute for directory or matching name
             int i;
 
             for (i = 0; i < 16; i++)
             {
               char name[12];
               memset(&name, 0 , 12);
-              match =0;
+
+              match = 0;
               match = compare(token[1], dir[i].DIR_Name);
 
               strncpy(&name, dir[i].DIR_Name, 11);
               if (match)
                 {
                   printf("FOUND THE DIR\n");
+                  printf("%s attribute: 0x %x file size: %d low: %d\n", name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
 
-                //  printf("%s attribute: 0x %x file size: %d low: %d\n", name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
+                  int cluster = dir[i].DIR_FirstClusterLow;
+
+                  int address = LBAToOffset(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, BPB_NumFATs,  BPB_FATSz32);
+
+                  printf("Offset in hex: 0x%x and decimal: %d\n", offset,offset);
+
+                  //move the file pointer to the directory location
+                  fseek(file_ptr, address, SEEK_SET);
+
+                  //read the directory
+                  //fread(&dir[0], sizeof(struct DirectoryEntry), offset, file_ptr);
+
+                  for (i = 0; i < 16; i++)
+                  {
+                    char name[12];
+                    memset(&name, 0 , 12);
+
+                  if(dir[i].DIR_Name[0] != (char)5 || dir[i].DIR_Name != (char)226)
+                  {
+                    if(dir[i].DIR_Attr == (int8_t) 0x1|| dir[i].DIR_Attr ==(int8_t)0x10||dir[i].DIR_Attr == (int8_t) 0x20)
+                    {
+                      strncpy(&name, dir[i].DIR_Name, 11);
+                      printf("%s %d\n", name, dir[i].DIR_FirstClusterLow);
+                    }
+
+                  }
+
+                  }
+
+
                   break;
                 }
             }
+
+
+
             if(!match) printf("%s DIR didn't find\n",token[1] );
 
       }
@@ -333,6 +439,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
 
       printf("\nbytes per sector %d\n\n", BPB_BytsPerSec);
 
+
       //go to root directory
       fseek(file_ptr, 0x100400, SEEK_SET);
 
@@ -341,8 +448,6 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
 
       int i;
 
-
-      //while loop (!= EOC) {}
       for (i = 0; i < 16; i++)
       {
         char name[12];
@@ -378,19 +483,26 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
       continue;
     }
 
-
-
-
-
     free( working_root );
 
   }
   return 0;
 }
 
-int LBAToOffset(int32_t sector,int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt,int8_t BPB_NumFATs, int32_t BPB_FATSz32)
+int LBAToOffset(int32_t sector, int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt,int8_t BPB_NumFATs, int32_t BPB_FATSz32)
 {
   return ((sector -2) * BPB_BytsPerSec)+(BPB_BytsPerSec* BPB_RsvdSecCnt)+(BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec);
+}
+
+
+int16_t NextLB(uint32_t sector, int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt, FILE** file_ptr)
+{
+  uint32_t FATAddress = (BPB_BytsPerSec * BPB_RsvdSecCnt) + (sector * 4 );
+  int16_t val;
+  fseek (file_ptr, FATAddress, SEEK_SET);
+  fread(&val, 2,1, file_ptr);
+  return val;
+
 }
 
 
