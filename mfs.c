@@ -174,6 +174,22 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
              continue;
           }
 
+            // TO DO: if not open print Error
+           fseek(file_ptr, 11,SEEK_SET);
+           fread(&BPB_BytsPerSec,2,1,file_ptr);
+
+           fseek(file_ptr, 13,SEEK_SET);
+           fread(&BPB_SecPerClus,1,1,file_ptr);
+
+           fseek(file_ptr, 14,SEEK_SET);
+           fread(&BPB_RsvdSecCnt,2,1,file_ptr);
+
+           fseek(file_ptr, 16,SEEK_SET);
+           fread(&BPB_NumFATs,1,1,file_ptr);
+
+           fseek(file_ptr, 36,SEEK_SET); //make sure of the This
+           fread(&BPB_FATSz32,4,1,file_ptr);
+
            printf(" file open success\n" );
            flag_open = TRUE;
       }
@@ -200,21 +216,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
 */
   else  if(strcmp(token[0],"info")==0) // ASSUMMING IMG FILE IS ALREADY OPEN
     {
-      // TO DO: if not open print Error
-      fseek(file_ptr, 11,SEEK_SET);
-      fread(&BPB_BytsPerSec,2,1,file_ptr);
 
-      fseek(file_ptr, 13,SEEK_SET);
-      fread(&BPB_SecPerClus,1,1,file_ptr);
-
-      fseek(file_ptr, 14,SEEK_SET);
-      fread(&BPB_RsvdSecCnt,2,1,file_ptr);
-
-      fseek(file_ptr, 16,SEEK_SET);
-      fread(&BPB_NumFATs,1,1,file_ptr);
-
-      fseek(file_ptr, 36,SEEK_SET); //make sure of the This
-      fread(&BPB_FATSz32,4,1,file_ptr);
 
       //%x for hexadecimal
       printf(" BPB_BytsPerSec in hexadecimal is 0x%5x and in decimal %d\n", BPB_BytsPerSec, BPB_BytsPerSec );
@@ -258,7 +260,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
             {
               char name[12];
               memset(&name, 0 , 12);
-              match =0;
+              match = 0;
               match = compare(token[1], dir[i].DIR_Name);
 
               strncpy(&name, dir[i].DIR_Name, 12); // NOTE: is not matching num.txt???
@@ -395,9 +397,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
                   fseek(file_ptr, address, SEEK_SET);
 
                   //read the directory
-                  fread(&dir[0], sizeof(struct DirectoryEntry), address, file_ptr);
-
-
+                  //fread(&dir[0], sizeof(struct DirectoryEntry), address, file_ptr);
 
                   break;
                 }
@@ -420,11 +420,13 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
   else  if(strcmp(token[0],"ls")==0) // DO: IMPLEMENT . AND ..
     {
 
-      //go to root directory
-      fseek(file_ptr, address, SEEK_SET);
 
-      //read the root directory
-      fread(&dir[0], sizeof(struct DirectoryEntry), 16, file_ptr);
+        fseek(file_ptr, address, SEEK_SET);
+
+        //read the root directory
+        fread(&dir[0], sizeof(struct DirectoryEntry), 16, file_ptr);
+
+      //go to root directory
 
       int i;
 
@@ -467,7 +469,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
   return 0;
 }
 
-int LBAToOffset(int32_t sector, int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt,int8_t BPB_NumFATs, int32_t BPB_FATSz32)
+int LBAToOffset(int sector, int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt,int8_t BPB_NumFATs, int32_t BPB_FATSz32)
 {
   return ((sector -2) * BPB_BytsPerSec)+(BPB_BytsPerSec* BPB_RsvdSecCnt)+(BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec);
 }
