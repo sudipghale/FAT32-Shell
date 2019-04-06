@@ -220,7 +220,7 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
       printf(" BPB_BytsPerSec in hexadecimal is 0x%5x and in decimal %d\n", BPB_BytsPerSec, BPB_BytsPerSec );
       printf(" BPB_SecPerClus in hexadecimal is 0x%5x and in decimal %d\n", BPB_SecPerClus, BPB_SecPerClus );
       printf(" BPB_RsvdSecCnt in hexadecimal is 0x%5x and in decimal %d\n", BPB_RootEntCnt, BPB_RootEntCnt );
-      printf(" BPB_NumFATs in hexadecimal is 0x %5x and in decimal %d\n", BPB_NumFATs, BPB_NumFATs );
+      printf(" BPB_NumFATs in hexadecimal is 0x%5x and in decimal %d\n", BPB_NumFATs, BPB_NumFATs );
       printf(" BPB_FATSz32 in hexadecimal is 0x%5x and in decimal %d\n", BPB_FATSz32, BPB_FATSz32 );
 
       int16_t rootHex =  (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) + (BPB_RsvdSecCnt *BPB_BytsPerSec);
