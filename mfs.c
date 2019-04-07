@@ -70,23 +70,25 @@ struct __attribute__((__packed__)) DirectoryEntry
 } ;
 
 /*Next three funs are used from the code provided by the professor: function discription is at the end*/
-int16_t NextLB(uint32_t sector, int16_t BPB_BytsPerSec, int16_t BPB_ResvdSecCnt, FILE** file_ptr);
-int LBAToOffset(int32_t sector,int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt,int8_t BPB_NumFATs, int32_t BPB_FATSz32);
+int16_t NextLB(uint32_t sector);
+int LBAToOffset(int32_t sector);
 int compare(char file_name[50], char img_name[50]);
+
+
+FILE *file_ptr; // file pointer
+char BS_OEMName[8]; //
+int16_t BPB_BytsPerSec; // Count of bytes per sector
+int8_t BPB_SecPerClus; // Number of sectors per allocation unit.
+int16_t BPB_RsvdSecCnt; // Number of reserved sectors in the Reserved region of the volume starting at the first sector of the volume.  FAT #1 starts at address BPB_RsvdSecCnt * BPB_BytsPerSec
+int8_t BPB_NumFATs; //The count of FAT data structures on the volume. This field should always contain the value 2 for any FAT volume of any type.
+int16_t BPB_RootEntCnt; // For FAT12 and FAT16 volumes, this field contains the count of 32-byte directory entries in the root directory. For FAT32 volumes,this field must be set to 0.
+char  BS_VolLab[11]; // Volume label. This field matches the 11-byte volume label recorded in the root directory.
+int32_t BPB_FATSz32; // This field is only defined for FAT32 media and does not exist on FAT12 and FAT16 media. This field is the FAT32 32-bit count ofsectors occupied by ONE FAT. BPB_FATSz16 must be 0. Total FAT size is BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec
+
 
 int main(int argc, char *argv[])
 {
-  FILE *file_ptr; // file pointer
   struct DirectoryEntry dir[16]; // using just 16 array for the dir
-  char BS_OEMName[8]; //
-  int16_t BPB_BytsPerSec; // Count of bytes per sector
-  int8_t BPB_SecPerClus; // Number of sectors per allocation unit.
-  int16_t BPB_RsvdSecCnt; // Number of reserved sectors in the Reserved region of the volume starting at the first sector of the volume.  FAT #1 starts at address BPB_RsvdSecCnt * BPB_BytsPerSec
-  int8_t BPB_NumFATs; //The count of FAT data structures on the volume. This field should always contain the value 2 for any FAT volume of any type.
-  int16_t BPB_RootEntCnt; // For FAT12 and FAT16 volumes, this field contains the count of 32-byte directory entries in the root directory. For FAT32 volumes,this field must be set to 0.
-  char  BS_VolLab[11]; // Volume label. This field matches the 11-byte volume label recorded in the root directory.
-  int32_t BPB_FATSz32; // This field is only defined for FAT32 media and does not exist on FAT12 and FAT16 media. This field is the FAT32 32-bit count ofsectors occupied by ONE FAT. BPB_FATSz16 must be 0. Total FAT size is BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec
-
   char * cmd_str = (char*) malloc( MAX_COMMAND_SIZE );
 
 /*
@@ -253,7 +255,6 @@ if the command is info then print the five BPB indexed
           }
         }
         /*
-
         */
   else  if(strcmp(token[0],"get")==0)
     {
@@ -262,19 +263,20 @@ if the command is info then print the five BPB indexed
         printf("Error: need file name or dir name\n" );
         continue;
       }
-      else
+      else //ASSUMED ITS FILENAME
       {
 
-        int match =0;
+        int i, match =0;
         char copyToken[12];
+        int cluster_low;
+        char name[12];
+        FILE  *file_to_cwd;
+
         strncpy( copyToken, token[1], strlen( token[1] ) );
 
-        FILE *read_in_fat32_file, *file_to_cwd;
-
-        int i;
         for (i = 0; i < 16; i++)
         {
-          char name[12];
+
           memset(&name, 0 , 12);
           match =0;
           strncpy(&name, dir[i].DIR_Name, 11);
@@ -282,9 +284,39 @@ if the command is info then print the five BPB indexed
           match = compare(token[1], dir[i].DIR_Name);
           if (match)
             {
-              printf("%s, DIR_Attr: 0x%x, DIR_FileSize: %d and DIR_FirstClusterLow: %d\n",name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
-              //read in file
-              //read_in_fat32_file
+              char *buffer= malloc(sizeof(char)* dir[i].DIR_FileSize); // exact ???
+              if(buffer == NULL)
+              {
+                printf("Error: malloc\n" );
+                break;
+              }
+            cluster_low = (int)dir[i].DIR_FirstClusterLow;
+
+
+            //printf("%d dir file size: malloc success\n",dir[i].DIR_FileSize );
+            //printf("%d buffer size: malloc success\n",sizeof(buffer) );
+              //printf("%s, DIR_Attr: 0x%x, DIR_FileSize: %d and DIR_FirstClusterLow: %d\n",name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
+              if(1)
+              {
+                address = LBAToOffset(cluster_low);
+
+                fseek(file_ptr, address, SEEK_SET);//go to root directory
+                printf("hehe\n" );
+                fread(buffer, dir[i].DIR_FileSize, 1, file_ptr);
+
+                //cluster_low = NextLB(cluster_low);
+                printf("%s buffer read\n",buffer );
+
+              }
+              file_to_cwd = fopen(copyToken, "w");
+              if(file_to_cwd)
+              {
+              //  printf("\n", );
+                fwrite(buffer,sizeof(buffer),1,file_to_cwd);
+                printf("Wrote to file\n" );
+              }
+              fclose(file_to_cwd);
+
 
               break;
             }
@@ -298,7 +330,6 @@ if the command is info then print the five BPB indexed
     Make a directory entry
     set the attribute to file value
     Change the FAT table
-
     1. loop from 0 to 16
     2. look at first byte of of fname and check if its 0 or 0xe5 that means it's free
     3. Make a new variable holding the address by passing that directory low cluster number. this is the address of start
@@ -330,7 +361,7 @@ if the command is info then print the five BPB indexed
           size = dir[i].DIR_FileSize;
         }
 
-        int address = LBAToOffset(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32);
+        int address = LBAToOffset(cluster);
 
 
         fseek(file_ptr, address, SEEK_SET);
@@ -347,8 +378,8 @@ if the command is info then print the five BPB indexed
 
         while(size > 0)
         {
-          cluster = NextLB(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, file_ptr);
-          address = LBAToOffset(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32);
+          cluster = NextLB(cluster);
+          address = LBAToOffset(cluster);
           //fseek(file_ptr)
           //fread
           //fwrite
@@ -365,11 +396,8 @@ if the command is info then print the five BPB indexed
     { return ((sector -2) * BPB_BytsPerSec)+(BPB_BytsPerSec* BPB_RsvdSecCnt)+(BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec);
     }
     then read in the values like we did for the root dir fseek and fread
-
     Files and sub-directory entries can be found by going to their first cluster number
-
     Find first cluster numberin directory entry of the file or directory at hand
-
     Figure out the sector to read using cluster number and FirstSectorofCluster equation
     Read that cluster
     */
@@ -415,7 +443,7 @@ if the command is info then print the five BPB indexed
             if(directory)
             {
               int cluster = dir[index].DIR_FirstClusterLow;
-              address = LBAToOffset(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32);
+              address = LBAToOffset(cluster);
               printf("Address: 0x%x\n", address);
               fseek(file_ptr, address, SEEK_SET);
             }
@@ -428,7 +456,6 @@ if the command is info then print the five BPB indexed
     get the add of the rootDir,
      Locate the Root Directory, get the list of fileand folders
      find low cluser num, and replace the offset with the low thing
-
     */
   else  if(strcmp(token[0],"ls")==0) // DO: IMPLEMENT  .. //assumed file oppened
     {
@@ -462,6 +489,58 @@ if the command is info then print the five BPB indexed
   else  if(strcmp(token[0],"read")==0)
     {
 
+      //read <filename> <position> <number of bytes>
+      if( token[1] == NULL ||token[2] == NULL || token[3] == NULL)
+      {
+        printf("Error: parameter error\n" );
+        continue;
+      }
+
+      int position = *token[2];
+      position -= '0'; //converts the postion to int
+
+      int number_of_bytes_to_read = *token[3];
+      number_of_bytes_to_read -= '0'; //converts the number of bytes to int
+
+      int match = 0;
+      char copyToken[12];
+      strncpy( copyToken, token[1], strlen( token[1] ) );
+
+      int i, j, k = 0;
+      for (i = 0; i < 16; i++)
+      {
+        char name[12];
+        memset(&name, 0 , 12);
+        match = 0;
+        strncpy(&name, dir[i].DIR_Name, 11);
+        strncpy( token[1],copyToken, strlen( copyToken ) );
+        match = compare(token[1], dir[i].DIR_Name);
+
+        if (match)
+          {
+            printf("%s, DIR_Attr: 0x%x, DIR_FileSize: %d and DIR_FirstClusterLow: %d\n",name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
+
+            int cluster_low = dir[i].DIR_FirstClusterLow;
+            address = LBAToOffset(cluster_low);
+
+            char *buffer= malloc(sizeof(char)* dir[i].DIR_FileSize); // buffer to read
+
+            //goes to the position specified by the user
+            fseek(file_ptr, address + position, SEEK_SET);
+
+
+            //populates the buffer from position to number_of_bytes_to_read
+            for (j = 0; j < number_of_bytes_to_read; j++)
+            {
+                fread(buffer+j, 1, 1, file_ptr);
+            }
+
+            printf("buffer: %s\n", buffer);
+            break;
+          }
+      }
+      if(!match) printf("%s file didn't find\n",token[1] );
+
     }
   else  if(strcmp(token[0],"exit")==0)
     {
@@ -481,13 +560,13 @@ if the command is info then print the five BPB indexed
   return 0;
 }
 // funnctions ******************************************************************
-int LBAToOffset(int sector, int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt,int8_t BPB_NumFATs, int32_t BPB_FATSz32)
+int LBAToOffset(int sector)
 {
   return ((sector -2) * BPB_BytsPerSec)+(BPB_BytsPerSec* BPB_RsvdSecCnt)+(BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec);
 }
 
 
-int16_t NextLB(uint32_t sector, int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt, FILE** file_ptr)
+int16_t NextLB(uint32_t sector)
 {
   uint32_t FATAddress = (BPB_BytsPerSec * BPB_RsvdSecCnt) + (sector * 4 );
   int16_t val;
