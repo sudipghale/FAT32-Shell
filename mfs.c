@@ -203,7 +203,6 @@ Address: (BPB_NumFATs * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_Byt
         printf("file close success\n" );
         flag_open = FALSE;
       }
-
     }
   /*
   ASSUMED THE FILE IS OPPNED:
@@ -211,16 +210,12 @@ if the command is info then print the five BPB indexed
 */
   else  if(strcmp(token[0],"info")==0)
     {
-
-
       //%x for hexadecimal
       printf(" BPB_BytsPerSec in hexadecimal is 0x%5x and in decimal %d\n", BPB_BytsPerSec, BPB_BytsPerSec );
       printf(" BPB_SecPerClus in hexadecimal is 0x%5x and in decimal %d\n", BPB_SecPerClus, BPB_SecPerClus );
       printf(" BPB_RsvdSecCnt in hexadecimal is 0x%5x and in decimal %d\n", BPB_RootEntCnt, BPB_RootEntCnt );
       printf(" BPB_NumFATs in hexadecimal is 0x%5x and in decimal %d\n", BPB_NumFATs, BPB_NumFATs );
       printf(" BPB_FATSz32 in hexadecimal is 0x%5x and in decimal %d\n", BPB_FATSz32, BPB_FATSz32 );
-
-
     }
     /*
      print attributes and the starting cluster  num of the file or dir.
@@ -270,36 +265,73 @@ if the command is info then print the five BPB indexed
       else
       {
 
+        int match =0;
+        char copyToken[12];
+        strncpy( copyToken, token[1], strlen( token[1] ) );
+
+        FILE *read_in_fat32_file, *file_to_cwd;
+
+        int i;
+        for (i = 0; i < 16; i++)
+        {
+          char name[12];
+          memset(&name, 0 , 12);
+          match =0;
+          strncpy(&name, dir[i].DIR_Name, 11);
+          strncpy( token[1],copyToken, strlen( copyToken ) );
+          match = compare(token[1], dir[i].DIR_Name);
+          if (match)
+            {
+              printf("%s, DIR_Attr: 0x%x, DIR_FileSize: %d and DIR_FirstClusterLow: %d\n",name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
+              //read in file
+              //read_in_fat32_file
+
+              break;
+            }
+        }
+        if(!match) printf("Error: file not found.\n" );
+
       }
 
     }
     /*
+    Make a directory entry
+    set the attribute to file value
+    Change the FAT table
 
+    1. loop from 0 to 16
+    2. look at first byte of of fname and check if its 0 or 0xe5 that means it's free
+    3. Make a new variable holding the address by passing that directory low cluster number. this is the address of start
+    4. fseek into start address and repeat above step to find next deleted or free cluster.
+    5. ??? set fat to -1 marks the end of the fwrite
+    6. fseek to beginning of address and fwrite until it finds the end.
     */
+
     else if(strcmp(token[0],"put")==0)
     {
 
         FILE *ofp, *copytoFAT32;
-        int cluster;
+        int cluster, i, size;
 
         copytoFAT32 = fopen(token[1], "r");
 
         //error checks to see if file is in the directory
         if (copytoFAT32 == NULL)
         {
-          printf("Error: File not found\n", );
-          break;
+          printf("Error: File not found\n" );
+          continue;
         }
 
 
-        for (i = 0; i < 16; i++);
+        for (i = 0; i < 16; i++)
         {
           //find file with empty space
           cluster = dir[i].DIR_FirstClusterLow;
-          size = dir[i].DIR_FileSize
+          size = dir[i].DIR_FileSize;
         }
 
-        int address = LBAToOffset(cluster);
+        int address = LBAToOffset(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32);
+
 
         fseek(file_ptr, address, SEEK_SET);
 
@@ -334,13 +366,11 @@ if the command is info then print the five BPB indexed
     }
     then read in the values like we did for the root dir fseek and fread
 
-
     Files and sub-directory entries can be found by going to their first cluster number
 
     Find first cluster numberin directory entry of the file or directory at hand
 
     Figure out the sector to read using cluster number and FirstSectorofCluster equation
-
     Read that cluster
     */
 
@@ -364,14 +394,16 @@ if the command is info then print the five BPB indexed
             //DO: Look for 0x10 attribute for directory or matching name
             for (i = 0; i < 16; i++)
             {
-              match =0;
+              match = 0;
               memset(&name, 0 , 12);
+
               strncpy(&name, dir[i].DIR_Name, 11);
               strncpy( token[1],copyToken, strlen( copyToken ) );
               match = compare(token[1], dir[i].DIR_Name);
+
               if (match)
                 {
-                  if(dir[i].DIR_Attr ==(int8_t)0x10)
+                  if(dir[i].DIR_Attr == (int8_t)0x10)
                   {
                     printf("dir found\n");
                     directory =1;
@@ -383,7 +415,7 @@ if the command is info then print the five BPB indexed
             if(directory)
             {
               int cluster = dir[index].DIR_FirstClusterLow;
-              address = LBAToOffset(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, BPB_NumFATs,  BPB_FATSz32);
+              address = LBAToOffset(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32);
               printf("Address: 0x%x\n", address);
               fseek(file_ptr, address, SEEK_SET);
             }
@@ -400,8 +432,14 @@ if the command is info then print the five BPB indexed
     */
   else  if(strcmp(token[0],"ls")==0) // DO: IMPLEMENT  .. //assumed file oppened
     {
+
+
       if(flag_open== TRUE)
       {
+
+        fseek(file_ptr, address, SEEK_SET);
+        fread(&dir[0], sizeof(struct DirectoryEntry), 16, file_ptr);
+
         int i;
 
         for (i = 0; i < 16; i++)
