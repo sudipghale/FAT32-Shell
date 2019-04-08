@@ -247,7 +247,7 @@ if the command is info then print the five BPB indexed
                   match = compare(token[1], dir[i].DIR_Name);
                   if (match)
                     {
-                      printf("%s, DIR_Attr: 0x%x, DIR_FileSize: %d and DIR_FirstClusterLow: %d\n",name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
+
                       break;
                     }
                 }
@@ -434,7 +434,6 @@ if the command is info then print the five BPB indexed
                 {
                   match =1;
                   index = i;
-                  printf(".. found\n");
                   break;
                 }
               }
@@ -444,7 +443,6 @@ if the command is info then print the five BPB indexed
                 if(match)
                 {
                   index=i;
-                  printf("dir: found\n");
                   break;
                 }
 
@@ -455,7 +453,6 @@ if the command is info then print the five BPB indexed
                 {
                   if(dir[index].DIR_Attr == (int8_t)0x10)
                   {
-                    printf("dir found with index %d\n",i);
                     directory =1;
                   }
                 }
@@ -555,7 +552,6 @@ if the command is info then print the five BPB indexed
 
          if (match)
           {
-            printf("%s, DIR_Attr: 0x%x, DIR_FileSize: %d and DIR_FirstClusterLow: %d\n",name, dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow );
 
              int cluster_low = dir[i].DIR_FirstClusterLow;
              address = LBAToOffset(cluster_low);
@@ -571,7 +567,7 @@ if the command is info then print the five BPB indexed
                 fread(buffer+j, 1, 1, file_ptr);
              }
 
-              printf("buffer: %s\n", buffer);
+              printf("%s\n", buffer);
               address = 0x100400;
 
              break;
@@ -641,7 +637,6 @@ int compare(char file_name[50], char img_name[50])
 
   if( strncmp( expanded_name, img_name, 11 ) == 0 )
   {
-    printf("They matched\n");
     return 1;
   }
   else return 0;
